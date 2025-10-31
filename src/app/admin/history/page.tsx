@@ -42,6 +42,28 @@ export default function HistoryPage() {
     fetchHistory();
   }, [fetchHistory]);
 
+  const getOverallFromSummary = (summary?: ScoreSummary | null): number | null => {
+    if (!summary) return null;
+    if (typeof summary.overall_score === "number") return summary.overall_score;
+    // Fallback: average numeric scores from entries
+    let total = 0;
+    let count = 0;
+    for (const [key, val] of Object.entries(summary)) {
+      if (key === "overall_score" || key === "all" || key === "skin_age") continue;
+      if (typeof val === "number") {
+        total += val;
+        count += 1;
+      } else if (val && typeof val === "object") {
+        const v = (val as { ui_score?: number; score?: number }).ui_score ?? (val as { ui_score?: number; score?: number }).score;
+        if (typeof v === "number") {
+          total += v;
+          count += 1;
+        }
+      }
+    }
+    return count > 0 ? parseFloat((total / count).toFixed(1)) : null;
+  };
+
   const handleDelete = async (item: AnalysisHistory) => {
     if (!confirm(`Are you sure you want to delete this analysis record?`)) {
       return;
@@ -92,8 +114,8 @@ export default function HistoryPage() {
       key: "image",
       label: "Image",
       render: (item: AnalysisHistory) => {
-        const path = item.overlay_path || item.image_path;
-        const imageUrl = path ? `${apiUrl}${path}` : null;
+        const type = item.overlay_path ? "overlay" : "original";
+        const imageUrl = `${apiUrl}/api/v2/history/${item.id}/image?type=${type}`;
         return imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt="Analysis" className="w-16 h-16 object-cover rounded" />
@@ -115,7 +137,7 @@ export default function HistoryPage() {
       key: "overall",
       label: "Overall Score",
       render: (item: AnalysisHistory) => {
-        const overall = item.score_summary?.overall_score ?? null;
+        const overall = getOverallFromSummary(item.score_summary);
         return <span className="font-semibold text-lg">{overall ?? "-"}</span>;
       },
     },
@@ -170,7 +192,7 @@ export default function HistoryPage() {
                   {history.length > 0
                     ? (() => {
                         const scores = history
-                          .map((h) => h.score_summary?.overall_score)
+                          .map((h) => getOverallFromSummary(h.score_summary))
                           .filter((v): v is number => typeof v === "number");
                         return scores.length > 0
                           ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
