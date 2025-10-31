@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Save to backend database (async, non-blocking)
+    // We'll capture recommendations from backend save response to forward to client
+    let backendRecommendations: unknown = null;
     if (task_id && original_image_url) {
       try {
         console.log("[API] Saving to backend database...");
@@ -160,9 +162,15 @@ export async function POST(request: NextRequest) {
           console.log("[API] Backend save response status:", saveResponse.status);
 
           if (saveResponse.ok) {
-            const saveResult = await saveResponse.json();
+            type SaveResult = {
+              data?: { id?: string };
+              recommendations?: unknown;
+            };
+            const saveResult: SaveResult = await saveResponse.json();
             console.log("[API] ✅ Successfully saved to database:", saveResult.data?.id);
             console.log("[API] Full save result:", JSON.stringify(saveResult, null, 2));
+            // Capture recommendations to return to client
+            backendRecommendations = saveResult?.recommendations ?? null;
           } else {
             const errorText = await saveResponse.text();
             console.error("[API] ❌ Failed to save to database. Status:", saveResponse.status);
@@ -182,6 +190,8 @@ export async function POST(request: NextRequest) {
       score_info: scoreInfo,
       result_images: resultImages,
       files_count: Object.keys(zipContent.files).length,
+      // Forward recommendations from backend if available so UI can show them immediately
+      recommendations: backendRecommendations,
     });
 
   } catch (error) {

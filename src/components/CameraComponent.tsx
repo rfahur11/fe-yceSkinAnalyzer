@@ -202,10 +202,16 @@ export default function CameraComponent() {
       // Set results
       console.log("📊 Setting analysis data:", downloadResult.score_info);
       console.log("🖼️ Result images count:", Object.keys(downloadResult.result_images || {}).length);
+      console.log("💊 Recommendations:", downloadResult.recommendations);
       
       setAnalysisData(downloadResult.score_info);
       setResultImages(downloadResult.result_images);
       setResultUrl(analyzeResult.result_url);
+
+      // Store recommendations if available
+      if (downloadResult.recommendations) {
+        localStorage.setItem('skincare_recommendations', JSON.stringify(downloadResult.recommendations));
+      }
 
       // Show result after a brief delay
       console.log("⏱️ Setting timeout to show result in 1 second...");

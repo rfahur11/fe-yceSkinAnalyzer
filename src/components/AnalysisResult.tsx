@@ -18,6 +18,39 @@ interface AnalysisData {
   skin_age?: number;
 }
 
+interface Ingredient {
+  id: number;
+  name: string;
+  generic_name: string;
+  benefit: string;
+  warnings: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  brand: string;
+  country: string;
+  url: string | null;
+  image_url: string | null;
+  price_range: string;
+}
+
+interface RecommendationItem {
+  ingredient: Ingredient;
+  suggested_use: string;
+  priority: number;
+  products: Product[];
+}
+
+interface Recommendation {
+  condition: string;
+  score: number;
+  severity: string;
+  severity_description: string;
+  recommendations: RecommendationItem[];
+}
+
 interface AnalysisResultProps {
   originalImage: string;
   analysisData: AnalysisData | null;
@@ -48,6 +81,8 @@ export default function AnalysisResult({
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof resultImages | "original" | "all">("original");
   const [showDebug, setShowDebug] = useState(false);
   const [overlayImage, setOverlayImage] = useState<string>("");
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
 
   // Category labels
   const categoryLabels: Record<keyof typeof resultImages | "all", string> = {
@@ -69,6 +104,19 @@ export default function AnalysisResult({
     console.log("  - Original image:", originalImage ? "available" : "missing");
     console.log("  - Analysis data:", analysisData ? "available" : "missing");
     console.log("  - Result images:", Object.keys(resultImages || {}).length, "images");
+    
+    // Load recommendations from localStorage
+    const stored = localStorage.getItem('skincare_recommendations');
+    if (stored) {
+      try {
+        const parsed: Recommendation[] = JSON.parse(stored);
+        // Use setTimeout to avoid synchronous setState
+        setTimeout(() => setRecommendations(parsed), 0);
+        console.log("💊 Loaded recommendations:", parsed.length, "conditions");
+      } catch (err) {
+        console.error("Failed to parse recommendations:", err);
+      }
+    }
     
     return () => {
       console.log("🎨 AnalysisResult UNMOUNTED");
@@ -379,6 +427,185 @@ export default function AnalysisResult({
               <pre className="text-xs text-gray-700 whitespace-pre-wrap">
                 {JSON.stringify(analysisData, null, 2)}
               </pre>
+            </div>
+          )}
+
+          {/* Recommendations Section */}
+          {recommendations.length > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowRecommendations(!showRecommendations)}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all flex items-center justify-between"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  💊 Rekomendasi Perawatan ({recommendations.length} kondisi)
+                </span>
+                <svg 
+                  className={`w-6 h-6 transition-transform ${showRecommendations ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showRecommendations && (
+                <div className="mt-4 space-y-6">
+                  {recommendations.map((rec, recIdx) => (
+                    <div 
+                      key={recIdx}
+                      className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg"
+                    >
+                      {/* Condition Header */}
+                      <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-gray-100">
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-800 capitalize">
+                            {categoryLabels[rec.condition as keyof typeof categoryLabels] || rec.condition}
+                          </h3>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              rec.severity === 'Poor' ? 'bg-red-100 text-red-700' :
+                              rec.severity === 'Fair' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {rec.severity}
+                            </span>
+                            <span className="text-gray-600 text-sm">{rec.severity_description}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-500 text-sm">Skor</p>
+                          <p className="text-4xl font-bold text-indigo-600">{rec.score}</p>
+                        </div>
+                      </div>
+
+                      {/* Recommendations */}
+                      <div className="space-y-4">
+                        {rec.recommendations.map((item, itemIdx) => (
+                          <div 
+                            key={itemIdx}
+                            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200"
+                          >
+                            {/* Ingredient Info */}
+                            <div className="flex items-start gap-4 mb-4">
+                              <div className="bg-white rounded-full p-3 shadow-md">
+                                <span className="text-2xl">🧪</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="text-xl font-bold text-gray-800">
+                                    {item.ingredient.name}
+                                  </h4>
+                                  {item.priority === 1 && (
+                                    <span className="bg-yellow-400 text-yellow-900 text-xs px-2 py-1 rounded-full font-medium">
+                                      ⭐ Prioritas Utama
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 text-sm italic mb-2">
+                                  {item.ingredient.generic_name}
+                                </p>
+                                
+                                {/* Benefit */}
+                                <div className="bg-white rounded-lg p-3 mb-2">
+                                  <p className="text-sm text-gray-700">
+                                    <strong className="text-green-700">✓ Manfaat:</strong> {item.ingredient.benefit}
+                                  </p>
+                                </div>
+                                
+                                {/* Suggested Use */}
+                                <div className="bg-blue-100 rounded-lg p-3 mb-2">
+                                  <p className="text-sm text-blue-900">
+                                    <strong>📝 Cara Pakai:</strong> {item.suggested_use}
+                                  </p>
+                                </div>
+                                
+                                {/* Warnings */}
+                                {item.ingredient.warnings && (
+                                  <div className="bg-yellow-100 rounded-lg p-3">
+                                    <p className="text-sm text-yellow-900">
+                                      <strong>⚠️ Perhatian:</strong> {item.ingredient.warnings}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Products */}
+                            {item.products.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-blue-200">
+                                <h5 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                  <span>🛍️</span>
+                                  Produk yang Mengandung Bahan Ini ({item.products.length})
+                                </h5>
+                                <div className="grid gap-3">
+                                  {item.products.map((product) => (
+                                    <div 
+                                      key={product.id}
+                                      className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <p className="font-bold text-gray-800">{product.name}</p>
+                                          <div className="flex items-center gap-3 mt-1">
+                                            <span className="text-sm text-gray-600">
+                                              by <strong>{product.brand}</strong>
+                                            </span>
+                                            {product.country && (
+                                              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                                {product.country}
+                                              </span>
+                                            )}
+                                            {product.price_range && (
+                                              <span className={`text-xs px-2 py-1 rounded font-medium ${
+                                                product.price_range === 'Budget' ? 'bg-green-100 text-green-700' :
+                                                product.price_range === 'Mid-range' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-purple-100 text-purple-700'
+                                              }`}>
+                                                {product.price_range}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {product.url && (
+                                          <a
+                                            href={product.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                                          >
+                                            Lihat Produk
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Disclaimer */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>⚠️ Disclaimer:</strong> Rekomendasi ini bersifat umum dan informatif. 
+                      Konsultasikan dengan dermatologis untuk perawatan yang sesuai dengan kondisi kulit Anda. 
+                      Lakukan patch test sebelum menggunakan produk baru.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
