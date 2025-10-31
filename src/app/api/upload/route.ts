@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
       resize_info: result.resize_info,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in upload API route:", error);
-    
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan saat memproses upload";
     return NextResponse.json(
       { 
         error: "Internal server error", 
-        detail: error.message || "Terjadi kesalahan saat memproses upload"
+        detail: message
       },
       { status: 500 }
     );
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 /**
  * Handle OPTIONS request untuk CORS
  */
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return NextResponse.json(
     {},
     {

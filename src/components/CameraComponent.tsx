@@ -8,6 +8,13 @@ import AnalysisResult from "./AnalysisResult";
 /**
  * TypeScript interface untuk Perfect Corp YMK SDK
  */
+type YMKEventMap = {
+  uiLoaded: void;
+  skinAnalysisDetectionCaptured: string | Blob | undefined;
+  faceQualityChanged: FaceQuality;
+  cameraFailed: void;
+};
+
 interface YMKInterface {
   init(config: { 
     language: string; 
@@ -17,8 +24,8 @@ interface YMKInterface {
   }): void;
   openSkincareCamera(): void;
   close(): void;
-  addEventListener(event: string, callback: (data?: any) => void): void;
-  removeEventListener(listener: any): void;
+  addEventListener<K extends keyof YMKEventMap>(event: K, callback: (data: YMKEventMap[K]) => void): void;
+  removeEventListener<K extends keyof YMKEventMap>(event: K, callback: (data: YMKEventMap[K]) => void): void;
 }
 
 interface FaceQuality {
@@ -608,7 +615,7 @@ export default function CameraComponent() {
           )}
 
           {/* Instructions */}
-          <div className="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 max-w-2xl mx-auto">
+          <div className="mt-12 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-6 max-w-2xl mx-auto">
             <h3 className="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
