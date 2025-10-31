@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { result_url } = body;
+    const { result_url, task_id, file_id, original_image_url, user_id, original_image_base64: originalImageBase64FromClient } = body;
 
     if (!result_url) {
       return NextResponse.json(
@@ -98,6 +98,82 @@ export async function POST(request: NextRequest) {
           console.log(`[API] Extracted ${filename} from ${path}`);
           break;
         }
+      }
+    }
+
+    // Save to backend database (async, non-blocking)
+    if (task_id && original_image_url) {
+      try {
+        console.log("[API] Saving to backend database...");
+        
+        // Prefer original image base64 sent from client, fallback to downloading from URL
+        let originalImageBase64 = "";
+
+        if (originalImageBase64FromClient && typeof originalImageBase64FromClient === "string") {
+          originalImageBase64 = originalImageBase64FromClient;
+          console.log("[API] Using original image base64 from client payload");
+        } else {
+          // Download original image dan convert ke base64
+          try {
+            const imgResponse = await fetch(original_image_url);
+            console.log("[API] Downloading original image URL status:", imgResponse.status);
+            if (imgResponse.ok) {
+              const imgBuffer = await imgResponse.arrayBuffer();
+              originalImageBase64 = `data:image/jpeg;base64,${Buffer.from(imgBuffer).toString("base64")}`;
+              console.log("[API] Original image downloaded for database save");
+            } else {
+              console.warn("[API] Failed to download original image. Status:", imgResponse.status);
+            }
+          } catch (imgError) {
+            console.warn("[API] Failed to download original image:", imgError);
+          }
+        }
+
+        if (originalImageBase64) {
+          // Call backend to save
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const saveUrl = `${backendUrl}/api/v2/history/save-from-frontend`;
+          
+          console.log("[API] Calling backend save URL:", saveUrl);
+          
+          const saveResponse = await fetch(saveUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              task_id,
+              file_id,
+              result_url,
+              // Ensure we pass a data URL; backend will strip prefix if present
+              original_image_base64: originalImageBase64.startsWith("data:")
+                ? originalImageBase64
+                : `data:image/jpeg;base64,${originalImageBase64}`,
+              result_data: {
+                score_info: scoreInfo,
+                result_images: resultImages,
+              },
+              user_id,
+            }),
+          });
+
+          console.log("[API] Backend save response status:", saveResponse.status);
+
+          if (saveResponse.ok) {
+            const saveResult = await saveResponse.json();
+            console.log("[API] ✅ Successfully saved to database:", saveResult.data?.id);
+            console.log("[API] Full save result:", JSON.stringify(saveResult, null, 2));
+          } else {
+            const errorText = await saveResponse.text();
+            console.error("[API] ❌ Failed to save to database. Status:", saveResponse.status);
+            console.error("[API] Error response:", errorText);
+          }
+        } else {
+          console.warn("[API] ⚠️ No original image available (neither base64 from client nor downloaded). Skipping database save");
+        }
+      } catch (saveError) {
+        // Non-blocking error, just log it
+        console.warn("[API] Error saving to database (non-critical):", saveError);
       }
     }
 

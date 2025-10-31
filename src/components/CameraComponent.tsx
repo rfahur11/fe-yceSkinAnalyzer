@@ -169,6 +169,12 @@ export default function CameraComponent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           result_url: analyzeResult.result_url,
+          task_id: analyzeResult.task_id,
+          file_id: uploadResult.file_id,
+          original_image_url: uploadResult.image_url,
+          // Kirim juga original image base64 sebagai fallback agar backend pasti bisa menyimpan
+          original_image_base64: base64Image,
+          user_id: null, // TODO: Add user authentication
         }),
       });
 
