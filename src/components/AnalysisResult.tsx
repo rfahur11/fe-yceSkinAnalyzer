@@ -84,6 +84,17 @@ export default function AnalysisResult({
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
 
+  // Close on ESC
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   // Category labels
   const categoryLabels: Record<keyof typeof resultImages | "all", string> = {
     pore: "Pori-pori",
@@ -251,30 +262,48 @@ export default function AnalysisResult({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 overflow-y-auto"
+      onClick={onClose}
+      aria-modal="true"
+      role="dialog"
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+        <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-3xl font-bold mb-2">🔬 Hasil Analisis Kulit</h2>
               <p className="text-blue-100">Powered by Perfect Corp AI</p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="hidden sm:inline-flex bg-white/15 hover:bg-white/25 text-white font-medium py-2 px-4 rounded-lg transition-all"
+              >
+                ← Kembali
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Tutup"
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
+                title="Tutup (Esc)"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="p-6">
           {/* Overall Score */}
           {analysisData?.all && (
-            <div className="mb-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+            <div className="mb-6 bg-linear-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800 mb-2">Skor Keseluruhan</h3>
@@ -401,7 +430,7 @@ export default function AnalysisResult({
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 flex gap-4 justify-center">
+          <div className="mt-6 flex gap-4 justify-center flex-wrap">
             <button
               onClick={onDownload}
               className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all flex items-center gap-2"
@@ -410,6 +439,12 @@ export default function AnalysisResult({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Download Hasil Lengkap
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-8 rounded-lg transition-all"
+            >
+              Tutup
             </button>
             
             <button
@@ -433,25 +468,32 @@ export default function AnalysisResult({
           {/* Recommendations Section */}
           {recommendations.length > 0 && (
             <div className="mt-6">
-              <button
-                onClick={() => setShowRecommendations(!showRecommendations)}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all flex items-center justify-between"
-              >
-                <span className="flex items-center gap-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  💊 Rekomendasi Perawatan ({recommendations.length} kondisi)
-                </span>
-                <svg 
-                  className={`w-6 h-6 transition-transform ${showRecommendations ? 'rotate-180' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
+              <div className="sticky top-2 z-10">
+                <button
+                  onClick={() => setShowRecommendations(!showRecommendations)}
+                  className="w-full bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all flex items-center justify-between"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                  <span className="flex items-center gap-3">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    💊 Rekomendasi Perawatan ({recommendations.length} kondisi)
+                  </span>
+                  <div className="flex items-center gap-3">
+                    {showRecommendations && (
+                      <span className="hidden sm:inline text-sm text-white/90">Tutup rekomendasi</span>
+                    )}
+                    <svg 
+                      className={`w-6 h-6 transition-transform ${showRecommendations ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
 
               {showRecommendations && (
                 <div className="mt-4 space-y-6">
@@ -488,7 +530,7 @@ export default function AnalysisResult({
                         {rec.recommendations.map((item, itemIdx) => (
                           <div 
                             key={itemIdx}
-                            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200"
+                            className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200"
                           >
                             {/* Ingredient Info */}
                             <div className="flex items-start gap-4 mb-4">
@@ -556,8 +598,9 @@ export default function AnalysisResult({
                                               by <strong>{product.brand}</strong>
                                             </span>
                                             {product.country && (
-                                              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                                                {product.country}
+                                              <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                                                <span>🌍</span>
+                                                <span>{product.country}</span>
                                               </span>
                                             )}
                                             {product.price_range && (
